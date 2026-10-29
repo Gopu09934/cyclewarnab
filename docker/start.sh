@@ -67,7 +67,9 @@ FACT_LINE_H=$((FACT_FONTSIZE + FACT_LINE_SPACING))
 
 # Text shown in the right panel's "SATELLITE" block and credits line.
 # Set these to match the footage you actually stream (credit your source!).
-SAT_TITLE="${SAT_TITLE:-Satellite View}"
+SAT_TITLE="${SAT_TITLE:-Live Footage}"
+INSTR_LABEL="${INSTR_LABEL:-FOOTAGE}"      # e.g. SATELLITE if you stream real satellite loops
+VIDEO_CAPTION="${VIDEO_CAPTION:-LIVE VIEW}" # letters/numbers/spaces only (no quotes or colons)
 CREDITS_TEXT="${CREDITS_TEXT:-Imagery: see description}"
 
 PANEL_W=333
@@ -247,8 +249,17 @@ fi
 # Reads CYCLONE_STATUS_URL (or ./cyclone_status.txt) every 60s and writes
 # one small text file per field, which drawtext re-reads (reload=1).
 #############################################
-printf 'Awaiting update' > "$ASSET_DIR/cat.txt"
-for f in winds pressure move pos updated; do printf '%s' '--' > "$ASSET_DIR/${f}.txt"; done
+# Built-in APPROXIMATE defaults (based on IMD forecasts reported 26-28 Oct 2026:
+# landfall between Bapatla and Visakhapatnam, then weakening inland). These are
+# NOT live measurements. Edit them here, or override automatically with
+# CYCLONE_STATUS_URL / ./cyclone_status.txt, which replace them once read.
+# Keep values short (<= ~22 chars) and free of % and backslashes.
+printf 'Deep Depression (fcst)'   > "$ASSET_DIR/cat.txt"
+printf '115-125 km/h landfall'    > "$ASSET_DIR/winds.txt"
+printf 'See IMD bulletin'         > "$ASSET_DIR/pressure.txt"
+printf 'Inland, NW then N'        > "$ASSET_DIR/move.txt"
+printf 'Andhra coast, inland'     > "$ASSET_DIR/pos.txt"
+printf 'Approx. as of 28 Oct'     > "$ASSET_DIR/updated.txt"
 
 poll_cyclone() {
     local src="$CYCLONE_LOCAL_FILE"
@@ -292,7 +303,7 @@ printf 'C Y C L O N E   U P D A T E'        > "$ASSET_DIR/header.txt"
 printf 'BAY OF BENGAL'                      > "$ASSET_DIR/eyebrow.txt"
 printf 'SUBSCRIBE for live cyclone updates' > "$ASSET_DIR/cta.txt"
 printf 'DID YOU KNOW'                       > "$ASSET_DIR/fact_label.txt"
-printf 'SATELLITE'                          > "$ASSET_DIR/instr_label.txt"
+printf '%s' "$INSTR_LABEL"                  > "$ASSET_DIR/instr_label.txt"
 printf '%s' "$SAT_TITLE"                    > "$ASSET_DIR/instr_title.txt"
 printf '%s' "$CREDITS_TEXT"                 > "$ASSET_DIR/credits.txt"
 
@@ -530,7 +541,7 @@ prepare_video_content() {
     if [ -f "${base}.wavelength.txt" ]; then
         head -n 1 "${base}.wavelength.txt" > "$ASSET_DIR/instr_sub.txt"
     else
-        printf 'Live view of the Bay of Bengal cyclone' > "$ASSET_DIR/instr_sub.txt"
+        printf 'Live weather footage' > "$ASSET_DIR/instr_sub.txt"
     fi
     fold -s -w 26 "$ASSET_DIR/instr_sub.txt" > "$ASSET_DIR/instr_sub.wrapped.txt"
 
@@ -608,7 +619,7 @@ prepare_video_content() {
     CHAIN+="[br6]drawbox=x=$((VX1 - BR_M - BR_L)):y=$((VY1 - BR_M - BR_T)):w=${BR_L}:h=${BR_T}:color=${GOLD}@0.9:t=fill[br7];"
     CHAIN+="[br7]drawbox=x=$((VX1 - BR_M - BR_T)):y=$((VY1 - BR_M - BR_L)):w=${BR_T}:h=${BR_L}:color=${GOLD}@0.9:t=fill[br8];"
     CHAIN+="[br8]drawbox=x=${VX0}:y=$((VY1 - 34)):w=220:h=34:color=black@0.55:t=fill[brcap1];"
-    CHAIN+="[brcap1]drawtext=fontfile=${FONT}:text='SATELLITE LIVE VIEW':fontcolor=white@0.9:fontsize=13:x=$((VX0 + 14)):y=$((VY1 - 22)):${SHADOW}[brcap2];"
+    CHAIN+="[brcap1]drawtext=fontfile=${FONT}:text='${VIDEO_CAPTION}':fontcolor=white@0.9:fontsize=13:x=$((VX0 + 14)):y=$((VY1 - 22)):${SHADOW}[brcap2];"
     local prev="brcap2"
 
     local CARD_PAD=10
@@ -843,6 +854,7 @@ prepare_video_content() {
     local PIE_SIZE=$PIE_AVAIL_H
     [ "$PIE_SIZE" -gt "$PANEL_TEXT_W" ] && PIE_SIZE=$PANEL_TEXT_W
     [ "$PIE_SIZE" -gt 140 ] && PIE_SIZE=140
+    if [ "$PIE_SIZE" -ge 90 ]; then
     local PIE_CX=$((PIE_SIZE / 2))
     local PIE_CY=$((PIE_SIZE / 2))
     local PIE_R=$((PIE_SIZE / 2 - 4))
@@ -864,6 +876,7 @@ prepare_video_content() {
     CHAIN+="[rgp2][pie_img]overlay=x=${PIE_X}:y=${PIE_Y}:shortest=1[rgp3];"
     CHAIN+="[rgp3]drawbox=x=${RTEXT_INSET}:y=$((PIE_Y + PIE_SIZE + 15)):w=${PANEL_TEXT_W}:h=1:color=white@0.2:t=fill[rgbase];"
     prev="rgbase"
+    fi
 
     BASE_CHAIN="$CHAIN"
     FACT_END="$prev"
@@ -904,7 +917,7 @@ build_final_filter() {
     tail+="[tk4]drawbox=x=0:y=682:w=113:h=38:color=${GOLD}:t=fill[tk5];"
     tail+="[tk5]drawtext=fontfile=${FONT}:text='LIVE NOW':fontcolor=black:fontsize=15:x=13:y=695[tk6];"
 
-    tail+="[tk6]drawtext=fontfile=${FONT}:text='${CHANNEL_NAME}':fontcolor=white@0.45:fontsize=14:borderw=1.5:bordercolor=black@0.7:x=(w-text_w)/2:y=657[final]"
+    tail+="[tk6]drawtext=fontfile=${FONT}:text='${CHANNEL_NAME}':fontcolor=white@0.45:fontsize=14:borderw=1.5:bordercolor=black@0.7:x=(w-text_w)/2:y=16[final]"
 
     echo "$tail"
 }
